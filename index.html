@@ -1,0 +1,281 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="UTF-8">
+<title>Sales Order</title>
+
+<script src="https://cdn.tailwindcss.com"></script>
+
+<!-- EXCEL -->
+<script src="https://cdn.jsdelivr.net/npm/xlsx/dist/xlsx.full.min.js"></script>
+
+<!-- PDF -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
+
+<style>
+@media print {
+  input, button, .no-print {
+    display: none !important;
+  }
+  .print-text {
+    display: inline !important;
+  }
+  body {
+    background: white !important;
+  }
+}
+
+.print-text {
+  display: none;
+}
+
+/* MODE PDF (MENIRU PRINT) */
+.pdf-mode input,
+.pdf-mode button,
+.pdf-mode .no-print {
+  display: none !important;
+}
+
+.pdf-mode .print-text {
+  display: inline !important;
+}
+
+.pdf-mode body {
+  background: white !important;
+}
+</style>
+</head>
+
+<body class="bg-gray-100 p-6">
+
+<div id="invoice" class="max-w-5xl mx-auto bg-white p-6 text-sm">
+
+<!-- HEADER -->
+ <div class="text-center mb-4">
+  <h2 class="text-xl font-bold">SALES ORDER</h2>
+</div>
+<div class="flex justify-between mb-4">
+
+  
+  <div>
+    <h1 class="font-bold text-lg">JEMPOL BARU</h1>
+    <p class="text-xs">* AWAS PENIPUAN REK. RESMI HANYA CV JEMPOL *</p>
+
+    <p class="mt-2">
+      Nomor SO :
+      <input id="noSO" placeholder="SO/001/JB" class="border-b outline-none font-semibold">
+      <span class="print-text"></span>
+    </p>
+
+    <p>
+      Sales :
+      <input id="sales" placeholder=".............." class="border-b outline-none">
+      <span class="print-text"></span>
+    </p>
+
+    <p>
+      Keterangan :
+      <input placeholder=".............." class="border-b outline-none">
+      <span class="print-text"></span>
+    </p>
+  </div>
+
+  <div class="text-right">
+    <h2 class="text-xl font-bold"></h2>
+    <p>Tanggal : <span id="tanggal"></span></p>
+
+    <p class="mt-2 font-semibold">Kepada Yth :</p>
+    <input id="pemesan" placeholder="NAMA PEMESAN" class="font-bold text-right border-b outline-none">
+    <span class="print-text"></span>
+
+    <p>
+      <input placeholder="ALAMAT" class="text-right border-b outline-none">
+      <span class="print-text"></span>
+    </p>
+
+    <p>
+      Telp / HP :
+      <input placeholder="08xxxxxxxxxx" class="text-right border-b outline-none">
+      <span class="print-text"></span>
+    </p>
+  </div>
+</div>
+
+<!-- TABLE -->
+<table class="w-full border border-black text-xs">
+<thead>
+<tr>
+  <th class="border border-black p-1 w-8">No</th>
+  <th class="border border-black p-1 w-24">Gudang</th>
+  <th class="border border-black p-1">Nama Barang</th>
+  <th class="border border-black p-1 w-16">Qty</th>
+  <th class="border border-black p-1 w-32">Harga Satuan</th>
+  <th class="border border-black p-1 w-32">Jumlah</th>
+</tr>
+</thead>
+
+<tbody id="items">
+<tr>
+  <td class="border border-black text-center no">1</td>
+
+  <td class="border border-black p-1">
+    <input class="w-full" placeholder="SALES - TB">
+    <span class="print-text"></span>
+  </td>
+
+  <td class="border border-black p-1">
+    <input class="w-full" placeholder="Nama barang">
+    <span class="print-text"></span>
+  </td>
+
+  <td class="border border-black p-1">
+    <input type="number" class="qty w-full" value="1">
+    <span class="print-text"></span>
+  </td>
+
+  <td class="border border-black p-1">
+    <input type="number" class="price w-full" value="0">
+    <span class="print-text"></span>
+  </td>
+
+  <td class="border border-black p-1 text-right subtotal">0</td>
+</tr>
+</tbody>
+</table>
+
+<!-- BUTTONS (Tidak ikut PDF) -->
+<div class="flex gap-2 mt-3 no-print">
+  <button onclick="tambahBaris()" class="border px-3 py-1 text-xs">+ Tambah Baris</button>
+  <button onclick="exportExcel()" class="border px-3 py-1 text-xs">Export Excel</button>
+  <button onclick="exportPDF()" class="border px-3 py-1 text-xs">Export PDF</button>
+  <button onclick="window.print()" class="border px-3 py-1 text-xs">Print</button>
+</div>
+
+<!-- TOTAL -->
+<div class="flex justify-end mt-4 font-bold">
+  Total : Rp <span id="total">0</span>
+</div>
+
+<!-- FOOTER -->
+<div class="grid grid-cols-3 mt-10 text-center text-xs">
+  <div>
+    <p>Pemesan</p>
+    <p class="mt-16">( ............... )</p>
+  </div>
+
+  <div>
+    <p id="jamCetak"></p>
+    <p class="mt-2">Pengajuan komplain atau Kerusakan barang</p>
+    <p class="mt-2">ke nomor WA 081-126-43487</p>
+  </div>
+
+  <div>
+    <p>Sales</p>
+    <p class="mt-16">( ............... )</p>
+  </div>
+</div>
+</div>
+
+<script>
+/* DATE & TIME */
+const now = new Date();
+document.getElementById("tanggal").innerText =
+  now.toLocaleDateString("id-ID", { day: '2-digit', month: 'short', year: 'numeric' });
+
+document.getElementById("jamCetak").innerText =
+  now.toLocaleString("id-ID");
+
+/* ADD ROW */
+function tambahBaris() {
+  const tbody = document.getElementById("items");
+  const no = tbody.children.length + 1;
+
+  const tr = document.createElement("tr");
+  tr.innerHTML = `
+    <td class="border border-black text-center no">${no}</td>
+    <td class="border border-black p-1"><input class="w-full"><span class="print-text"></span></td>
+    <td class="border border-black p-1"><input class="w-full"><span class="print-text"></span></td>
+    <td class="border border-black p-1"><input type="number" class="qty w-full" value="1"><span class="print-text"></span></td>
+    <td class="border border-black p-1"><input type="number" class="price w-full" value="0"><span class="print-text"></span></td>
+    <td class="border border-black p-1 text-right subtotal">0</td>
+  `;
+  tbody.appendChild(tr);
+}
+
+/* CALCULATE TOTAL */
+document.addEventListener("input", () => {
+  let total = 0;
+  document.querySelectorAll("#items tr").forEach(row => {
+    const qty = parseFloat(row.querySelector(".qty")?.value || 0);
+    const price = parseFloat(row.querySelector(".price")?.value || 0);
+    const subtotal = qty * price;
+    row.querySelector(".subtotal").innerText = subtotal.toLocaleString("id-ID");
+    total += subtotal;
+  });
+  document.getElementById("total").innerText = total.toLocaleString("id-ID");
+});
+
+/* PREPARE PRINT */
+function fillPrintText() {
+  document.querySelectorAll("input").forEach(i => {
+    i.nextElementSibling.innerText = i.value || "................";
+  });
+}
+
+/* EXPORT PDF (HASIL IDENTIK PRINT) */
+function exportPDF() {
+  fillPrintText();
+
+  document.body.classList.add("pdf-mode");
+
+  const element = document.getElementById("invoice");
+
+  const opt = {
+    margin: 3,
+    filename: "sales-order.pdf",
+    html2canvas: { scale: 2 },
+    jsPDF: { unit: "mm", format: "a4", orientation: "portrait" }
+  };
+
+  html2pdf()
+    .set(opt)
+    .from(element)
+    .save()
+    .then(() => {
+      document.body.classList.remove("pdf-mode");
+    });
+}
+
+/* EXPORT EXCEL */
+function exportExcel() {
+  const data = [
+    ["SALES ORDER"],
+    [],
+    ["Nomor SO", document.getElementById("noSO").value],
+    ["Tanggal", document.getElementById("tanggal").innerText],
+    ["Sales", document.getElementById("sales").value],
+    ["Pemesan", document.getElementById("pemesan").value],
+    [],
+    ["No", "Gudang", "Nama Barang", "Qty", "Harga", "Jumlah"]
+  ];
+
+  document.querySelectorAll("#items tr").forEach((r, i) => {
+    data.push([
+      i + 1,
+      r.children[1].querySelector("input").value,
+      r.children[2].querySelector("input").value,
+      r.querySelector(".qty").value,
+      r.querySelector(".price").value,
+      r.querySelector(".subtotal").innerText
+    ]);
+  });
+
+  const ws = XLSX.utils.aoa_to_sheet(data);
+  const wb = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb, ws, "Sales Order");
+  XLSX.writeFile(wb, "sales-order.xlsx");
+}
+</script>
+
+</body>
+</html>
